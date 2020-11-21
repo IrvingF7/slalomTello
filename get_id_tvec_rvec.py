@@ -57,10 +57,11 @@ def calibrate():
         f.write("{'ret':"+str(ret)+", 'mtx':"+str(list(mtx))+', "dist":'+str(list(dist))+'}')
         f.close()
 
-    
+
+#%%
 #test wheater already calibrated or not
 path = os.path.abspath('..')
-fname = path + "/res/calibration_parameters.txt"
+fname = path + "\\slalomTello\\res\\calibration_parameters.txt"
 print(fname)
 try:
     f = open(fname, "r")
@@ -69,11 +70,12 @@ try:
 except:
     calibrate()
 
+#%%
 
 cap = cv2.VideoCapture(0)
 
 #importing aruco dictionary
-dictionary = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
+dictionary = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6x6_250)
 
 #calibration parameters
 f = open(fname, "r")
@@ -90,7 +92,7 @@ file_abspath = os.path.join(os.path.dirname(__file__), 'Samples/box.obj')
 tvec = [[[0, 0, 0]]]
 rvec = [[[0, 0, 0]]]
 
-aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250 )
+aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6x6_250 )
 markerLength = 0.25   # Here, our measurement unit is centimetre.
 parameters = cv2.aruco.DetectorParameters_create()
 parameters.adaptiveThreshConstant = 10
@@ -107,6 +109,8 @@ while True:
         #print(ids)
         #print(corners)
         #print(rvec)
+        
+        print('test')
         
         for i in range(0, ids.size):
             aruco.drawAxis(frame, mtx, dist, rvec[i], tvec[i], 0.1)
