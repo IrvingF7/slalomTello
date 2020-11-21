@@ -42,26 +42,28 @@ def calibrate():
         cv2.imshow('Calibration',frame)
         if cv2.waitKey(100) & 0xFF == ord('q'):
             break
-        
+
     cap.release()
     cv2.destroyAllWindows()
     cv2.waitKey(10)
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
-    
+
     #create a file to store data
     from lxml import etree
     from lxml.builder import E
-    
+
     global fname
     with open(fname, "w") as f:
         f.write("{'ret':"+str(ret)+", 'mtx':"+str(list(mtx))+', "dist":'+str(list(dist))+'}')
         f.close()
 
 
+
 #%%
 #test wheater already calibrated or not
 path = os.path.abspath('..')
 fname = path + "\\slalomTello\\res\\calibration_parameters.txt"
+
 print(fname)
 try:
     f = open(fname, "r")
@@ -112,6 +114,7 @@ while True:
         
         print('test')
         
+
         for i in range(0, ids.size):
             aruco.drawAxis(frame, mtx, dist, rvec[i], tvec[i], 0.1)
 
@@ -122,10 +125,11 @@ while True:
             cv2.putText(frame, text, position, font, 0.4, (0, 0, 0), 1, cv2.LINE_AA)
 
             #get tvec, rvec of each id
-            print(ids[i])
-            print(tvec[i][0])
-            print(rvec[i][0])
-            
+            print('ids: ', ids[i])
+            print('translation: ', tvec[i][0])
+            print('rotation: ', rvec[i][0])
+
+            print('distance: ', np.linalg.norm(tvec[i][0]))
         aruco.drawDetectedMarkers(frame, corners)
     else:
         tvec = [[[0, 0, 0]]]
