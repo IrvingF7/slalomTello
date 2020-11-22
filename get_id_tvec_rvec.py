@@ -2,6 +2,7 @@ import os
 import numpy as np
 import cv2
 import cv2.aruco as aruco
+import time
 
 
 def calibrate():
@@ -91,6 +92,12 @@ tvec = [[[0, 0, 0]]]
 rvec = [[[0, 0, 0]]]
 
 aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250 )
+### 
+markerImage = np.zeros((200, 200), dtype=np.uint8)
+#dictionary, ID from dict, size of tag, object to store tag, thickness parameter
+markerImage = cv2.aruco.drawMarker(dictionary, 35, 200, markerImage, 1)
+cv2.imwrite("marker33.png", markerImage);
+###
 markerLength = 0.25   # Here, our measurement unit is centimetre.
 parameters = cv2.aruco.DetectorParameters_create()
 parameters.adaptiveThreshConstant = 10
@@ -123,6 +130,7 @@ while True:
             print('rotation: ', rvec[i][0])
 
             print('distance: ', np.linalg.norm(tvec[i][0]))
+            print(time.time())
         aruco.drawDetectedMarkers(frame, corners)
     else:
         tvec = [[[0, 0, 0]]]
