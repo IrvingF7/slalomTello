@@ -7,8 +7,8 @@ import time
 
 def calibrate():
 
-    cap = cv2.VideoCapture(0)
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    cap = cv.VideoCapture(0)
+    criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
     # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
     # checkerboard of size (9 x 7) is used
@@ -23,12 +23,12 @@ def calibrate():
         # Capture frame-by-frame
         ret, frame = cap.read()
         # resizing for faster detection
-        frame = cv2.resize(frame, (640, 480))
+        frame = cv.resize(frame, (640, 480))
         # using a greyscale picture, also for faster detection
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
         # Find the chessboard corners
-        ret, corners = cv2.findChessboardCorners(gray, (9,7), None)
+        ret, corners = cv.findChessboardCorners(gray, (9,7), None)
 
         # If found, add object points, image points
         if ret == True:
@@ -36,18 +36,18 @@ def calibrate():
             imgpoints.append(corners)
 
             # Draw and display the corners
-            cv2.drawChessboardCorners(frame, (9,7), corners, ret)
+            cv.drawChessboardCorners(frame, (9,7), corners, ret)
             #write_name = 'corners_found'+str(idx)+'.jpg'
 
         # Display the resulting frame
-        cv2.imshow('Calibration',frame)
-        if cv2.waitKey(100) & 0xFF == ord('q'):
+        cv.imshow('Calibration',frame)
+        if cv.waitKey(100) & 0xFF == ord('q'):
             break
 
     cap.release()
-    cv2.destroyAllWindows()
-    cv2.waitKey(10)
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
+    cv.destroyAllWindows()
+    cv.waitKey(10)
+    ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1],None,None)
 
     #create a file to store data
     from lxml import etree
@@ -59,10 +59,13 @@ def calibrate():
         f.close()
 
 
+
+#%%
 #test wheater already calibrated or not
-path = os.path.abspath('')
-fname = path + "/res/calibration_parameters.txt"
+path = os.path.abspath('..')
+fname = path + "\\slalomTello\\res\\calibration_parameters.txt"
 print(fname)
+
 try:
     f = open(fname, "r")
     f.read()
@@ -70,11 +73,12 @@ try:
 except:
     calibrate()
 
+#%%
 
-cap = cv2.VideoCapture(0)
+cap = cv.VideoCapture(0)
 
 #importing aruco dictionary
-dictionary = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250)
+dictionary = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
 
 #calibration parameters
 f = open(fname, "r")
@@ -91,53 +95,45 @@ file_abspath = os.path.join(os.path.dirname(__file__), 'Samples/box.obj')
 tvec = [[[0, 0, 0]]]
 rvec = [[[0, 0, 0]]]
 
-aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_6X6_250 )
-### 
-markerImage = np.zeros((200, 200), dtype=np.uint8)
-#dictionary, ID from dict, size of tag, object to store tag, thickness parameter
-markerImage = cv2.aruco.drawMarker(dictionary, 35, 200, markerImage, 1)
-cv2.imwrite("marker33.png", markerImage);
-###
+aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
 markerLength = 0.25   # Here, our measurement unit is centimetre.
-parameters = cv2.aruco.DetectorParameters_create()
+parameters = cv.aruco.DetectorParameters_create()
 parameters.adaptiveThreshConstant = 10
 
 while True:
 
     ret, frame = cap.read()
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    corners, ids, rejectedImgPoints = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-    font = cv2.FONT_HERSHEY_SIMPLEX
+    gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    corners, ids, rejectedImgPoints = cv.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+    font = cv.FONT_HERSHEY_SIMPLEX
     if np.all(ids != None):
-        rvec, tvec, _ = aruco.estimatePoseSingleMarkers(corners, 0.05, mtx, dist)
+        rvec, tvec, _ = cv.aruco.estimatePoseSingleMarkers(corners, 0.05, mtx, dist)
 
         #print(ids)
         #print(corners)
         #print(rvec)
 
         for i in range(0, ids.size):
-            aruco.drawAxis(frame, mtx, dist, rvec[i], tvec[i], 0.1)
+            cv.aruco.drawAxis(frame, mtx, dist, rvec[i], tvec[i], 0.1)
 
             # show translation vector on the corner
-            font = cv2.FONT_HERSHEY_SIMPLEX
+            font = cv.FONT_HERSHEY_SIMPLEX
             text = str([round(i,5) for i in tvec[i][0]])
             position = tuple(corners[i][0][0])
-            cv2.putText(frame, text, position, font, 0.4, (0, 0, 0), 1, cv2.LINE_AA)
+            cv.putText(frame, text, position, font, 0.4, (0, 0, 0), 1, cv.LINE_AA)
 
             #get tvec, rvec of each id
             print('ids: ', ids[i])
             print('translation: ', tvec[i][0])
             print('rotation: ', rvec[i][0])
-
-            print('distance: ', np.linalg.norm(tvec[i][0]))
-            print(time.time())
-        aruco.drawDetectedMarkers(frame, corners)
+            #print('distance: ', np.linalg.norm(tvec[i][0]))
+        cv.aruco.drawDetectedMarkers(frame, corners)
     else:
         tvec = [[[0, 0, 0]]]
         rvec = [[[0, 0, 0]]]
-    cv2.imshow('frame',frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    cv.imshow('frame',frame)
+    if cv.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
-cv2.destroyAllWindows()
+cv.destroyAllWindows()
