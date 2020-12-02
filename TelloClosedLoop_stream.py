@@ -330,15 +330,15 @@ while True:
             ptime = lastTime
             yaw = lastYaw
 
-        reference_yaw = 0
 
         #Yaw control
-        error_yaw = reference_yaw - yaw
+        reference_yaw = 0
         if i>100:
+            error_yaw = reference_yaw - yaw
             integratedError_yaw = integratedError_yaw + INTERVAL*error_yaw
             errorDerivative_yaw = (error_yaw - errorStore_yaw) / INTERVAL
             errorStore_yaw = error_yaw
-        control_YA = kp_yaw*error_yaw + ki_yaw*integratedError_yaw + kd_yaw*errorDerivative_yaw # + k3*integrated2Error
+            control_YA = kp_yaw*error_yaw + ki_yaw*integratedError_yaw + kd_yaw*errorDerivative_yaw # + k3*integrated2Error
 
         lastTime = ptime
         lastYaw = yaw
@@ -347,28 +347,24 @@ while True:
         #UD control
         tvec_y = presentState[24]
         reference_y = 0.0
-        error_ud = reference_y - tvec_y
-
-        integratedError_ud = integratedError_ud + INTERVAL*error_ud
-        errorDerivative_ud = (error_ud - errorStore_ud) / INTERVAL
-        errorStore_ud = error_ud
-
-        if tvec_y!=1.0:
+        if tvec_y!=0.0:
             #print('UD control active')
+            error_ud = reference_y - tvec_y
+            integratedError_ud = integratedError_ud + INTERVAL*error_ud
+            errorDerivative_ud = (error_ud - errorStore_ud) / INTERVAL
+            errorStore_ud = error_ud
             control_UD = kp_ud*error_ud + ki_ud*integratedError_ud + kd_ud*errorDerivative_ud
 
 
         #LR control
         tvec_x = presentState[23]
         reference_x = 0.0
-        error_lr = -(reference_x - tvec_x)
-
-        integratedError_lr = integratedError_lr + INTERVAL*error_lr
-        errorDerivative_lr = (error_lr - errorStore_lr) / INTERVAL
-        errorStore_lr = error_lr
-
-        if tvec_x!=1.0:
+        if tvec_x!=0.0:
             #print('LR control active')
+            error_lr = -(reference_x - tvec_x)
+            integratedError_lr = integratedError_lr + INTERVAL*error_lr
+            errorDerivative_lr = (error_lr - errorStore_lr) / INTERVAL
+            errorStore_lr = error_lr
             control_LR = kp_lr*error_lr +  ki_lr*integratedError_lr + kd_lr*errorDerivative_lr
 
 
@@ -379,14 +375,12 @@ while True:
         else:
             reference_z = 0.8
 
-        error_fb = -(reference_z - tvec_z)
-
-        integratedError_fb = integratedError_fb + INTERVAL*error_fb
-        errorDerivative_fb = (error_fb - errorStore_fb) / INTERVAL
-        errorStore_fb = error_fb
-
-        if tvec_z!=1.0:
+        if tvec_z!=0.0:
             #print('FB control active')
+            error_fb = -(reference_z - tvec_z)
+            integratedError_fb = integratedError_fb + INTERVAL*error_fb
+            errorDerivative_fb = (error_fb - errorStore_fb) / INTERVAL
+            errorStore_fb = error_fb
             control_FB = kp_fb*error_fb +  ki_fb*integratedError_fb + kd_fb*errorDerivative_fb
 
 ###################################################################################################
