@@ -190,9 +190,9 @@ def camera():
                     cv.putText(frame, text, position, font, 0.4, (0, 0, 0), 1, cv.LINE_AA)
 
                     #get tvec, rvec of each id
-                    print('ids: ', ids[i])
-                    print('translation: ', tvec[i][0])
-                    print('rotation: ', rvec[i][0])
+                    #print('ids: ', ids[i])
+                    #print('translation: ', tvec[i][0])
+                    #print('rotation: ', rvec[i][0])
                     #print('distance: ', np.linalg.norm(tvec[i][0]))
                 cv.aruco.drawDetectedMarkers(frame, corners)
             else:
@@ -284,14 +284,15 @@ while True:
 
     # Controller Variables
     kp_yaw = 2.5
+    ki_yaw = 1.0
     kd_yaw = 0.1
 
     kp_ud = 200
-    ki_ud = 0
+    ki_ud = 10
     kd_ud = 0
 
     kp_lr = 70
-    ki_lr = 0
+    ki_lr = 10
     kd_lr = 0
 
     kp_fb = 70
@@ -320,7 +321,7 @@ while True:
     lastYaw = 0.0
 
     for i in range(0,300):
-
+        print('Starting control loop')
         # Get data (read sensors)
         presentState = stateQ.get(block=True, timeout=None)  # block if needed until new state is ready
         ptime = presentState[1]     # present time (don't over write time function)
@@ -353,7 +354,7 @@ while True:
         errorStore_ud = error_ud
 
         if tvec_y!=1.0:
-            print('UD control active')
+            #print('UD control active')
             control_UD = kp_ud*error_ud + ki_ud*integratedError_ud + kd_ud*errorDerivative_ud
 
 
@@ -367,7 +368,7 @@ while True:
         errorStore_lr = error_lr
 
         if tvec_x!=1.0:
-            print('LR control active')
+            #print('LR control active')
             control_LR = kp_lr*error_lr +  ki_lr*integratedError_lr + kd_lr*errorDerivative_lr
 
 
@@ -385,7 +386,7 @@ while True:
         errorStore_fb = error_fb
 
         if tvec_z!=1.0:
-            print('FB control active')
+            #print('FB control active')
             control_FB = kp_fb*error_fb +  ki_fb*integratedError_fb + kd_fb*errorDerivative_fb
 
 ###################################################################################################
