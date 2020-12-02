@@ -42,7 +42,7 @@ CmdSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 # Bind to the local address and port
 CmdSock.bind(local_address)
 
-###################
+################### ffplay -probesize 32 -i udp://@:11111 -framerate 30
 # socket for state information
 local_port = 8890
 StateSock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)  # socket for sending cmd
@@ -120,7 +120,7 @@ def rcvstate():
     index = 0
     while not stateStop.is_set():
 
-        response, ip = StateSock.recvfrom(1024)
+        response, _ = StateSock.recvfrom(1024)
         if response == 'ok':
             continue
         report_tag(str(response),index)
@@ -135,12 +135,12 @@ def camera():
 
     print('Started camera thread')
     path = os.path.abspath('..')
-    fname = path + "\\slalomTello\\res\\calibration_parameters.txt"
+    fname = path + "/slalomTello/res/calibration_parameters.txt"
     print(fname)
     #cap = cv.VideoCapture(0)
     cap = cv.VideoCapture("udp://@0.0.0.0:11111")
     #importing aruco dictionary
-    dictionary = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
+    #dictionary = cv.aruco.Dictionary_get(cv.aruco.DICT_6X6_250)
     #calibration parameters
     f = open(fname, "r")
     ff = [i for i in f.readlines()]
@@ -151,13 +151,13 @@ def camera():
     dist = array(parameters['dist'])
 
     # Create absolute path from this module
-    file_abspath = os.path.join(os.path.dirname(__file__), 'Samples/box.obj')
+    #file_abspath = os.path.join(os.path.dirname(__file__), 'Samples/box.obj')
 
     tvec = [[[0, 0, 0]]]
     rvec = [[[0, 0, 0]]]
 
-    aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
-    markerLength = 0.25   # Here, our measurement unit is centimetre.
+    aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_6X6_250)
+    #markerLength = 0.25   # Here, our measurement unit is centimetre.
     parameters = cv.aruco.DetectorParameters_create()
     parameters.adaptiveThreshConstant = 10
 
@@ -215,7 +215,7 @@ def receive():
   while True:
     # Try to receive the message otherwise print the exception
     try:
-      response, ip_address = CmdSock.recvfrom(128)
+      response, _ = CmdSock.recvfrom(128)
       print("Received message: " + response.decode(encoding='utf-8'))
     except Exception as e:
       # If there's an error close the socket and break out of the loop
