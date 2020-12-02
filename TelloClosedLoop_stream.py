@@ -16,7 +16,10 @@ import cv2 as cv
 
 State_data_file_name = 'statedata.txt'
 index = 0
-reference = 0.0     # Reference signal
+reference_yaw = 0.0     # Reference yaw signal
+reference_x = 0.0
+reference_y = 0.0
+reference_z = 0.0
 control_LR = 0      # Control input for left/right
 control_FB = 0      # Cotnrol input for forward/back
 control_UD = 0      # Control input for up/down
@@ -71,7 +74,7 @@ def report_tag(str,index):
     telemdata=[]
     telemdata.append(index)
     telemdata.append(time.time()-start_time)
-    telemdata.append(reference)
+    telemdata.append(reference_yaw)
     telemdata.append(control_LR)
     telemdata.append(control_FB)
     telemdata.append(control_UD)
@@ -94,6 +97,9 @@ def report_tag(str,index):
     telemdata.append(rvec_GLOBAL[0])
     telemdata.append(rvec_GLOBAL[1])
     telemdata.append(rvec_GLOBAL[2])
+    telemdata.append(reference_x)
+    telemdata.append(reference_y)
+    telemdata.append(reference_z)
     dataQ.put(telemdata)
     stateQ.put(telemdata)
     if (index %100) == 0:
@@ -277,24 +283,43 @@ while True:
 ###################################################################################################
 
     # Controller Variables
-    kp = 2.5 # <--------------------------------------------------------------------------------------- Fill this out
-    ki = 1.0
-    kd = 0.1
+    kp_yaw = 2.5
+    kd_yaw = 0.1
+
+    kp_ud = 200
+    ki_ud = 0
+    kd_ud = 0
+
+    kp_lr = 70
+    ki_lr = 0
+    kd_lr = 0
+
+    kp_fb = 70
+    ki_fb = 10
+    kd_fb = 0
 
     # Control stores
-    integratedError = 0.0
-    errorDerivative = 0.0
-    errorStore = 0.0
+    integratedError_yaw = 0.0
+    errorDerivative_yaw = 0.0
+    errorStore_yaw = 0.0
 
-    # Useful Reference Signal Variables
-    period = 20.0 # <----------------------------------------------------------------------------------- Fill this out
-    amplitude = 2.8 # <-------------------------------------------------------------------------------- Fill this out
+    integratedError_fb = 0.0
+    errorDerivative_fb = 0.0
+    errorStore_fb = 0.0
+
+    integratedError_lr = 0.0
+    errorDerivative_lr = 0.0
+    errorStore_lr = 0.0
+
+    integratedError_ud = 0.0
+    errorDerivative_ud = 0.0
+    errorStore_ud = 0.0
 
     # to prevent hickups
     lastTime = 0.0
     lastYaw = 0.0
 
-    for i in range(0,500):
+    for i in range(0,300):
 
         # Get data (read sensors)
         presentState = stateQ.get(block=True, timeout=None)  # block if needed until new state is ready
@@ -304,24 +329,64 @@ while True:
             ptime = lastTime
             yaw = lastYaw
 
-        # Compute Reference Signal (Triangle wave)
-        reference = -((2*amplitude)/np.pi) * np.arcsin(np.sin((2*np.pi*ptime)/(period)))
-        reference = np.rad2deg(reference)
+        reference_yaw = 0
 
-        #PID control
-        error = reference - yaw
+        #Yaw control
+        error_yaw = reference_yaw - yaw
         if i>100:
-            integratedError = integratedError + INTERVAL*error
-            errorDerivative = (error - errorStore) / INTERVAL
-            errorStore = error
-        control_YA = kp*error + ki*integratedError + kd*errorDerivative # + k3*integrated2Error
-
-        # Compute Error and Control Input
-        #error = reference-yaw # <-------------------------------------------------------------------------------- Fill this out
-        #control_YA = kp*error #<--------------------------------------------------------------------------- Fill this out
+            integratedError_yaw = integratedError_yaw + INTERVAL*error_yaw
+            errorDerivative_yaw = (error_yaw - errorStore_yaw) / INTERVAL
+            errorStore_yaw = error_yaw
+        control_YA = kp_yaw*error_yaw + ki_yaw*integratedError_yaw + kd_yaw*errorDerivative_yaw # + k3*integrated2Error
 
         lastTime = ptime
         lastYaw = yaw
+
+
+        #UD control
+        tvec_y = presentState[24]
+        reference_y = 0.0
+        error_ud = reference_y - tvec_y
+
+        integratedError_ud = integratedError_ud + INTERVAL*error_ud
+        errorDerivative_ud = (error_ud - errorStore_ud) / INTERVAL
+        errorStore_ud = error_ud
+
+        if tvec_y!=1.0:
+            print('UD control active')
+            control_UD = kp_ud*error_ud + ki_ud*integratedError_ud + kd_ud*errorDerivative_ud
+
+
+        #LR control
+        tvec_x = presentState[23]
+        reference_x = 0.0
+        error_lr = -(reference_x - tvec_x)
+
+        integratedError_lr = integratedError_lr + INTERVAL*error_lr
+        errorDerivative_lr = (error_lr - errorStore_lr) / INTERVAL
+        errorStore_lr = error_lr
+
+        if tvec_x!=1.0:
+            print('LR control active')
+            control_LR = kp_lr*error_lr +  ki_lr*integratedError_lr + kd_lr*errorDerivative_lr
+
+
+        #FB control
+        tvec_z = presentState[25]
+        if i<200:
+            reference_z = 0.5
+        else:
+            reference_z = 0.8
+
+        error_fb = -(reference_z - tvec_z)
+
+        integratedError_fb = integratedError_fb + INTERVAL*error_fb
+        errorDerivative_fb = (error_fb - errorStore_fb) / INTERVAL
+        errorStore_fb = error_fb
+
+        if tvec_z!=1.0:
+            print('FB control active')
+            control_FB = kp_fb*error_fb +  ki_fb*integratedError_fb + kd_fb*errorDerivative_fb
 
 ###################################################################################################
 #################################DON'T TOUCH ANYTHING OUTSIDE THIS#################################
