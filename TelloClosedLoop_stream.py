@@ -12,6 +12,7 @@ from queue import Queue
 from queue import LifoQueue
 import os
 import cv2 as cv
+import math
 
 
 State_data_file_name = 'statedata.txt'
@@ -137,8 +138,8 @@ def camera():
     path = os.path.abspath('..')
     fname = path + "/slalomTello/res/calibration_parameters.txt"
     print(fname)
-    #cap = cv.VideoCapture(0)
-    cap = cv.VideoCapture("udp://@0.0.0.0:11111")
+    cap = cv.VideoCapture(0)
+    #cap = cv.VideoCapture("udp://@0.0.0.0:11111")
     #importing aruco dictionary
     #dictionary = cv.aruco.Dictionary_get(cv.aruco.DICT_6X6_250)
     #calibration parameters
@@ -156,7 +157,7 @@ def camera():
     tvec = [[[0, 0, 0]]]
     rvec = [[[0, 0, 0]]]
 
-    aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_6X6_250)
+    aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
     #markerLength = 0.25   # Here, our measurement unit is centimetre.
     parameters = cv.aruco.DetectorParameters_create()
     parameters.adaptiveThreshConstant = 10
@@ -190,16 +191,25 @@ def camera():
                     cv.putText(frame, text, position, font, 0.4, (0, 0, 0), 1, cv.LINE_AA)
 
                     #get tvec, rvec of each id
-                    #print('ids: ', ids[i])
-                    #print('translation: ', tvec[i][0])
+                    print('ids: ', ids[i])
+                    print('i: ',i)
+                    print('translation: ', tvec[i][0])
                     #print('rotation: ', rvec[i][0])
-                    #print('distance: ', np.linalg.norm(tvec[i][0]))
+                    print('distance: ', np.linalg.norm(tvec[i][0]))
+                    print('\n')
                 cv.aruco.drawDetectedMarkers(frame, corners)
+                #yawpitchroll_angles = -180*yawpitchrolldecomposition(rvec_GLOBAL)/math.pi
+                #yawpitchroll_angles[0,0] = (360-yawpitchroll_angles[0,0])%360 # change rotation sense if needed, comment this line otherwise
+                #yawpitchroll_angles[1,0] = yawpitchroll_angles[1,0]+90
+                #print(yawpitchroll_angles)
             else:
                 pass
 
             tvec_GLOBAL = tvec[0][0]
             rvec_GLOBAL = rvec[0][0]
+
+
+
             cv.imshow('frame',frame)
             if cv.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -223,6 +233,18 @@ def receive():
       print("Error receiving: " + str(e))
       break
 
+
+def yawpitchrolldecomposition(rvec):
+    R = cv.Rodrigues(np.float32(rvec))[0]
+
+    sin_x    = math.sqrt(R[2,0] * R[2,0] +  R[2,1] * R[2,1])
+
+    z1    = math.atan2(R[2,0], R[2,1])     # around z1-axis
+    x      = math.atan2(sin_x,  R[2,2])     # around x-axis
+    z2    = math.atan2(R[0,2], -R[1,2])    # around z2-axis
+
+
+    return np.array([[z1], [x], [z2]])
 
 
 send('command')
@@ -320,7 +342,7 @@ while True:
     lastTime = 0.0
     lastYaw = 0.0
 
-    for i in range(0,300):
+    for i in range(0,600):
         print('Starting control loop')
         # Get data (read sensors)
         presentState = stateQ.get(block=True, timeout=None)  # block if needed until new state is ready
@@ -370,7 +392,7 @@ while True:
 
         #FB control
         tvec_z = presentState[25]
-        if i<200:
+        if i<300:
             reference_z = 0.5
         else:
             reference_z = 0.8
@@ -382,6 +404,7 @@ while True:
             errorDerivative_fb = (error_fb - errorStore_fb) / INTERVAL
             errorStore_fb = error_fb
             control_FB = kp_fb*error_fb +  ki_fb*integratedError_fb + kd_fb*errorDerivative_fb
+
 
 ###################################################################################################
 #################################DON'T TOUCH ANYTHING OUTSIDE THIS#################################
