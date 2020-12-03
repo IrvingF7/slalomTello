@@ -156,7 +156,8 @@ def camera():
     tvec = [[[0, 0, 0]]]
     rvec = [[[0, 0, 0]]]
 
-    aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
+    #aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
+    aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_6X6_250)
     #markerLength = 0.25   # Here, our measurement unit is centimetre.
     parameters = cv.aruco.DetectorParameters_create()
     parameters.adaptiveThreshConstant = 10
@@ -166,7 +167,8 @@ def camera():
     ret = False
 
 
-    tag_list = [10, 11, 33, 1]
+    #tag_list = [10, 11, 33, 1]
+    tag_list = [35, 34, 33, 77, 76]
     dist_threshold = 0.1 # if tello is within this distance, we no longer look at the tag   
     while(True):
         ret, frame = cap.read()
@@ -198,17 +200,19 @@ def camera():
                     print('rotation: ', rvec[i][0])
                     print('distance: ', np.linalg.norm(tvec[i][0]))
                 cv.aruco.drawDetectedMarkers(frame, corners)             
-                # print('tag list')
-                # print(tag_list) #list [33, 34, 35]
-             
-                # print('current id')
-                # print(curr_id) #int 33, the one being looked for
-              
-                # print('FLATTENING ids')
-                # print(ids) ##ndarray [[35]], the one the Tello sees
-
+                
                 curr_id = tag_list[0]  
                 ids_list = np.ndarray.tolist(ids.flatten()) #turn it into a list
+
+                print('tag list')
+                print(tag_list) #list [33, 34, 35]
+             
+                print('current id being sought')
+                print(curr_id) #int 33, the one being looked for
+              
+                print('IDs seen by the Tello')
+                print(ids) ##ndarray [[35]], the one the Tello sees
+
 
                 try: 
                     curr_index = ids_list.index(curr_id) 
