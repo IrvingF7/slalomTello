@@ -165,6 +165,9 @@ def camera():
     #scale = 3
     ret = False
 
+
+    tag_list = [10, 11, 33, 1]
+    dist_threshold = 0.1 # if tello is within this distance, we no longer look at the tag
     while(True):
         ret, frame = cap.read()
         if(ret):
@@ -190,16 +193,36 @@ def camera():
                     cv.putText(frame, text, position, font, 0.4, (0, 0, 0), 1, cv.LINE_AA)
 
                     #get tvec, rvec of each id
-                    #print('ids: ', ids[i])
-                    #print('translation: ', tvec[i][0])
-                    #print('rotation: ', rvec[i][0])
-                    #print('distance: ', np.linalg.norm(tvec[i][0]))
+                    print('ids: ', ids[i])
+                    print('translation: ', tvec[i][0])
+                    print('rotation: ', rvec[i][0])
+                    print('distance: ', np.linalg.norm(tvec[i][0]))
                 cv.aruco.drawDetectedMarkers(frame, corners)
+
+                curr_id = tag_list[0]
+                curr_index = ids.index(curr_id)
+                curr_dist = np.linalg.norm(tvec[curr_index][0])
+                if curr_dist < dist_threshold:
+                    tag_list.remove(curr_id)
+
+                # If we are passing the last tag, we just shut down camera
+                if len(tag_list) == 0:
+                    break
+
+                curr_id = tag_list[0]
+                curr_index = ids.index(curr_id)
+
+
+                tvec_GLOBAL = tvec[curr_index][0]
+                rvec_GLOBAL = rvec[curr_index][0]
+
             else:
                 pass
 
-            tvec_GLOBAL = tvec[0][0]
-            rvec_GLOBAL = rvec[0][0]
+            # If we are passing the last tag, we just shut down camera
+            if len(tag_list) == 0:
+                break
+
             cv.imshow('frame',frame)
             if cv.waitKey(1) & 0xFF == ord('q'):
                 break
