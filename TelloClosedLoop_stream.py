@@ -166,6 +166,9 @@ def camera():
     #scale = 3
     ret = False
 
+
+    tag_list = [10, 11, 33, 1]
+    dist_threshold = 0.1 # if tello is within this distance, we no longer look at the tag
     while(True):
         ret, frame = cap.read()
         if(ret):
@@ -192,22 +195,34 @@ def camera():
 
                     #get tvec, rvec of each id
                     print('ids: ', ids[i])
-                    print('i: ',i)
                     print('translation: ', tvec[i][0])
-                    #print('rotation: ', rvec[i][0])
+                    print('rotation: ', rvec[i][0])
                     print('distance: ', np.linalg.norm(tvec[i][0]))
-                    print('\n')
                 cv.aruco.drawDetectedMarkers(frame, corners)
-                #yawpitchroll_angles = -180*yawpitchrolldecomposition(rvec_GLOBAL)/math.pi
-                #yawpitchroll_angles[0,0] = (360-yawpitchroll_angles[0,0])%360 # change rotation sense if needed, comment this line otherwise
-                #yawpitchroll_angles[1,0] = yawpitchroll_angles[1,0]+90
-                #print(yawpitchroll_angles)
+
+                curr_id = tag_list[0]
+                curr_index = ids.index(curr_id)
+                curr_dist = np.linalg.norm(tvec[curr_index][0])
+                if curr_dist < dist_threshold:
+                    tag_list.remove(curr_id)
+
+                # If we are passing the last tag, we just shut down camera
+                if len(tag_list) == 0:
+                    break
+
+                curr_id = tag_list[0]
+                curr_index = ids.index(curr_id)
+
+
+                tvec_GLOBAL = tvec[curr_index][0]
+                rvec_GLOBAL = rvec[curr_index][0]
+
             else:
                 pass
 
-            tvec_GLOBAL = tvec[0][0]
-            rvec_GLOBAL = rvec[0][0]
-
+            # If we are passing the last tag, we just shut down camera
+            if len(tag_list) == 0:
+                break
 
 
             cv.imshow('frame',frame)
