@@ -32,6 +32,10 @@ stateQ = LifoQueue() # have top element available for reading present state by c
 
 tvec_GLOBAL = [1.0,1.0,1.0]
 rvec_GLOBAL = [1.0,1.0,1.0]
+target_num_GLOBAL = 0
+#tag_list = [10, 11, 33, 1]
+#tag_list = [35, 34, 33, 77, 76]
+tag_list = [10,33]
 
 # IP and port of Tello for commands
 tello_address = ('192.168.10.1', 8889)
@@ -133,6 +137,8 @@ def rcvstate():
 def camera():
     global rvec_GLOBAL
     global tvec_GLOBAL
+    global target_num_GLOBAL
+    global tag_list
 
     print('Started camera thread')
     path = os.path.abspath('..')
@@ -154,8 +160,8 @@ def camera():
     # Create absolute path from this module
     #file_abspath = os.path.join(os.path.dirname(__file__), 'Samples/box.obj')
 
-    tvec = [[[0, 0, 0]]]
-    rvec = [[[0, 0, 0]]]
+    tvec = [[[0.0, 0.0, 0.0]]]
+    rvec = [[[0.0, 0.0, 0.0]]]
 
     aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
     #markerLength = 0.25   # Here, our measurement unit is centimetre.
@@ -167,9 +173,6 @@ def camera():
     ret = False
 
 
-    #tag_list = [10, 11, 33, 1]
-    #tag_list = [35, 34, 33, 77, 76]
-    tag_list = [1,10,33]
     dist_threshold = 0.4 # if tello is within this distance, we no longer look at the tag
     while(True):
         ret, frame = cap.read()
@@ -202,7 +205,8 @@ def camera():
                     #print('distance: ', np.linalg.norm(tvec[i][0]))
                 cv.aruco.drawDetectedMarkers(frame, corners)
 
-                curr_id = tag_list[0]
+                #curr_id = tag_list[0]
+                curr_id = tag_list[target_num_GLOBAL]
                 ids_list = np.ndarray.tolist(ids.flatten()) #turn it into a list
 
                 #print('tag list')
@@ -223,10 +227,11 @@ def camera():
                     rvec_GLOBAL = rvec[curr_index][0]
 
                     #verify you are within the threshold and that your Tello can see the next tag
-                    if curr_dist < dist_threshold and ids_list[curr_index] == curr_id:
-                        print('Removing tag: '+str(curr_id))
-                        tag_list.remove(curr_id)
-                        curr_id = tag_list[0]
+                    #if curr_dist < dist_threshold and ids_list[curr_index] == curr_id and (len(tag_list)-1>target_num_GLOBAL):
+                    #    print('Removing tag: '+str(curr_id))
+                    #    #tag_list.remove(curr_id)
+                    #    #curr_id = tag_list[0]
+                    #    target_num_GLOBAL += 1
 
                 except:
                     pass
@@ -329,7 +334,7 @@ while True:
 
     # Send the command to Tello
     send(message)
-    sleep(10.0) # wait for takeoff and motors to spin up
+    sleep(5.0) # wait for takeoff and motors to spin up
     # height in centimeters
     print('takeoff done')
 
@@ -342,16 +347,16 @@ while True:
     ki_yaw = 1.0
     kd_yaw = 0.1
 
-    kp_ud = 200
-    ki_ud = 10
+    kp_ud = 50
+    ki_ud = 5
     kd_ud = 0
 
-    kp_lr = 30
-    ki_lr = 5
+    kp_lr = 20
+    ki_lr = 2
     kd_lr = 0
 
-    kp_fb = 30
-    ki_fb = 5
+    kp_fb = 20
+    ki_fb = 2
     kd_fb = 0
 
     # Control stores
@@ -374,6 +379,9 @@ while True:
     # to prevent hickups
     lastTime = 0.0
     lastYaw = 0.0
+    last_tvec_x = 0.0
+    last_tvec_y = 0.0
+    last_tvec_z = 0.0
 
     print('Starting control loop')
     for i in range(0,600):
@@ -381,9 +389,15 @@ while True:
         presentState = stateQ.get(block=True, timeout=None)  # block if needed until new state is ready
         ptime = presentState[1]     # present time (don't over write time function)
         yaw = presentState[9]       # current yaw angle (don't overwrite)
+        tvec_x = presentState[23]
+        tvec_y = presentState[24]
+        tvec_z = presentState[25]
         if lastTime > ptime:
             ptime = lastTime
             yaw = lastYaw
+            tvec_x = last_tvec_x
+            tvec_y = last_tvec_y
+            tvec_z = last_tvec_z
 
 
         #Yaw control
@@ -398,9 +412,8 @@ while True:
         lastTime = ptime
         lastYaw = yaw
 
-
         #UD control
-        tvec_y = presentState[24]
+
         reference_y = 0.0
         if tvec_y!=0.0:
             #print('UD control active')
@@ -412,8 +425,9 @@ while True:
 
 
         #LR control
-        tvec_x = presentState[23]
-        reference_x = 0.0
+        #xtargets = [0.3, -0.3, 0.0]
+        xtargets = [-0.3, 0.0]
+        reference_x = xtargets[target_num_GLOBAL]
         if tvec_x!=0.0:
             #print('LR control active')
             error_lr = -(reference_x - tvec_x)
@@ -424,9 +438,7 @@ while True:
 
 
         #FB control
-        tvec_z = presentState[25]
-        reference_z = 0.3
-
+        reference_z = 0.5
         if tvec_z!=0.0:
             #print('FB control active')
             error_fb = -(reference_z - tvec_z)
@@ -435,6 +447,15 @@ while True:
             errorStore_fb = error_fb
             control_FB = kp_fb*error_fb +  ki_fb*integratedError_fb + kd_fb*errorDerivative_fb
 
+
+        #verify you are within the threshold and that your Tello can see the next tag
+        if abs(error_lr)<0.1 and abs(error_fb)<0.1 and target_num_GLOBAL<(len(tag_list)-1) and tvec_z!=0.0:
+            print('Removing tag: '+str(target_num_GLOBAL))
+            integratedError_fb = 0.0
+            integratedError_lr = 0.0
+            #tag_list.remove(curr_id)
+            #curr_id = tag_list[0]
+            target_num_GLOBAL += 1
 
 ###################################################################################################
 #################################DON'T TOUCH ANYTHING OUTSIDE THIS#################################
