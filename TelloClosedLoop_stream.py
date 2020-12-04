@@ -138,8 +138,8 @@ def camera():
     path = os.path.abspath('..')
     fname = path + "/slalomTello/res/calibration_parameters.txt"
     print(fname)
-    cap = cv.VideoCapture(0)
-    #cap = cv.VideoCapture("udp://@0.0.0.0:11111")
+    #cap = cv.VideoCapture(0)
+    cap = cv.VideoCapture("udp://@0.0.0.0:11111")
     #importing aruco dictionary
     #dictionary = cv.aruco.Dictionary_get(cv.aruco.DICT_6X6_250)
     #calibration parameters
@@ -157,12 +157,7 @@ def camera():
     tvec = [[[0, 0, 0]]]
     rvec = [[[0, 0, 0]]]
 
-<<<<<<< HEAD
     aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
-=======
-    #aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
-    aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_6X6_250)
->>>>>>> afee4cba4ba41be6a04b14a20a61a3fa49415ef7
     #markerLength = 0.25   # Here, our measurement unit is centimetre.
     parameters = cv.aruco.DetectorParameters_create()
     parameters.adaptiveThreshConstant = 10
@@ -173,8 +168,9 @@ def camera():
 
 
     #tag_list = [10, 11, 33, 1]
-    tag_list = [35, 34, 33, 77, 76]
-    dist_threshold = 0.1 # if tello is within this distance, we no longer look at the tag   
+    #tag_list = [35, 34, 33, 77, 76]
+    tag_list = [1,10,33]
+    dist_threshold = 0.4 # if tello is within this distance, we no longer look at the tag
     while(True):
         ret, frame = cap.read()
         if(ret):
@@ -200,40 +196,44 @@ def camera():
                     cv.putText(frame, text, position, font, 0.4, (0, 0, 0), 1, cv.LINE_AA)
 
                     #get tvec, rvec of each id
-                    print('ids: ', ids[i])
-                    print('translation: ', tvec[i][0])
-                    print('rotation: ', rvec[i][0])
-                    print('distance: ', np.linalg.norm(tvec[i][0]))
-                cv.aruco.drawDetectedMarkers(frame, corners)             
-                
-                curr_id = tag_list[0]  
+                    #print('ids: ', ids[i])
+                    #print('translation: ', tvec[i][0])
+                    #print('rotation: ', rvec[i][0])
+                    #print('distance: ', np.linalg.norm(tvec[i][0]))
+                cv.aruco.drawDetectedMarkers(frame, corners)
+
+                curr_id = tag_list[0]
                 ids_list = np.ndarray.tolist(ids.flatten()) #turn it into a list
 
-                print('tag list')
-                print(tag_list) #list [33, 34, 35]
-             
-                print('current id being sought')
-                print(curr_id) #int 33, the one being looked for
-              
-                print('IDs seen by the Tello')
-                print(ids) ##ndarray [[35]], the one the Tello sees
+                #print('tag list')
+                #print(tag_list) #list [33, 34, 35]
+
+                #print('current id being sought')
+                #print(curr_id) #int 33, the one being looked for
+
+                #print('IDs seen by the Tello')
+                #print(ids) ##ndarray [[35]], the one the Tello sees
 
 
-                try: 
-                    curr_index = ids_list.index(curr_id) 
+                try:
+                    curr_index = ids_list.index(curr_id)
                     curr_dist = np.linalg.norm(tvec[curr_index][0]) #get the distance
-                   
+
+                    tvec_GLOBAL = tvec[curr_index][0]
+                    rvec_GLOBAL = rvec[curr_index][0]
+
                     #verify you are within the threshold and that your Tello can see the next tag
                     if curr_dist < dist_threshold and ids_list[curr_index] == curr_id:
-                        tag_list.remove(curr_id)                    
-                        curr_id = tag_list[0]             
+                        print('Removing tag: '+str(curr_id))
+                        tag_list.remove(curr_id)
+                        curr_id = tag_list[0]
+
                 except:
                     pass
-                               
+
                 if len(tag_list) == 0:
-                        break 
-                tvec_GLOBAL = tvec[curr_index][0]
-                rvec_GLOBAL = rvec[curr_index][0]
+                        break
+
 
             else:
                 pass
@@ -346,12 +346,12 @@ while True:
     ki_ud = 10
     kd_ud = 0
 
-    kp_lr = 70
-    ki_lr = 10
+    kp_lr = 30
+    ki_lr = 5
     kd_lr = 0
 
-    kp_fb = 70
-    ki_fb = 10
+    kp_fb = 30
+    ki_fb = 5
     kd_fb = 0
 
     # Control stores
@@ -375,8 +375,8 @@ while True:
     lastTime = 0.0
     lastYaw = 0.0
 
+    print('Starting control loop')
     for i in range(0,600):
-        print('Starting control loop')
         # Get data (read sensors)
         presentState = stateQ.get(block=True, timeout=None)  # block if needed until new state is ready
         ptime = presentState[1]     # present time (don't over write time function)
@@ -425,10 +425,7 @@ while True:
 
         #FB control
         tvec_z = presentState[25]
-        if i<300:
-            reference_z = 0.5
-        else:
-            reference_z = 0.8
+        reference_z = 0.3
 
         if tvec_z!=0.0:
             #print('FB control active')
