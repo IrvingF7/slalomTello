@@ -157,7 +157,12 @@ def camera():
     tvec = [[[0, 0, 0]]]
     rvec = [[[0, 0, 0]]]
 
+<<<<<<< HEAD
     aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
+=======
+    #aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
+    aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_6X6_250)
+>>>>>>> afee4cba4ba41be6a04b14a20a61a3fa49415ef7
     #markerLength = 0.25   # Here, our measurement unit is centimetre.
     parameters = cv.aruco.DetectorParameters_create()
     parameters.adaptiveThreshConstant = 10
@@ -167,8 +172,9 @@ def camera():
     ret = False
 
 
-    tag_list = [10, 11, 33, 1]
-    dist_threshold = 0.1 # if tello is within this distance, we no longer look at the tag
+    #tag_list = [10, 11, 33, 1]
+    tag_list = [35, 34, 33, 77, 76]
+    dist_threshold = 0.1 # if tello is within this distance, we no longer look at the tag   
     while(True):
         ret, frame = cap.read()
         if(ret):
@@ -198,22 +204,34 @@ def camera():
                     print('translation: ', tvec[i][0])
                     print('rotation: ', rvec[i][0])
                     print('distance: ', np.linalg.norm(tvec[i][0]))
-                cv.aruco.drawDetectedMarkers(frame, corners)
+                cv.aruco.drawDetectedMarkers(frame, corners)             
+                
+                curr_id = tag_list[0]  
+                ids_list = np.ndarray.tolist(ids.flatten()) #turn it into a list
 
-                curr_id = tag_list[0]
-                curr_index = ids.index(curr_id)
-                curr_dist = np.linalg.norm(tvec[curr_index][0])
-                if curr_dist < dist_threshold:
-                    tag_list.remove(curr_id)
+                print('tag list')
+                print(tag_list) #list [33, 34, 35]
+             
+                print('current id being sought')
+                print(curr_id) #int 33, the one being looked for
+              
+                print('IDs seen by the Tello')
+                print(ids) ##ndarray [[35]], the one the Tello sees
 
-                # If we are passing the last tag, we just shut down camera
+
+                try: 
+                    curr_index = ids_list.index(curr_id) 
+                    curr_dist = np.linalg.norm(tvec[curr_index][0]) #get the distance
+                   
+                    #verify you are within the threshold and that your Tello can see the next tag
+                    if curr_dist < dist_threshold and ids_list[curr_index] == curr_id:
+                        tag_list.remove(curr_id)                    
+                        curr_id = tag_list[0]             
+                except:
+                    pass
+                               
                 if len(tag_list) == 0:
-                    break
-
-                curr_id = tag_list[0]
-                curr_index = ids.index(curr_id)
-
-
+                        break 
                 tvec_GLOBAL = tvec[curr_index][0]
                 rvec_GLOBAL = rvec[curr_index][0]
 
