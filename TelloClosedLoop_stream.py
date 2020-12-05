@@ -35,7 +35,7 @@ rvec_GLOBAL = [1.0,1.0,1.0]
 target_num_GLOBAL = 0
 #tag_list = [10, 11, 33, 1]
 #tag_list = [35, 34, 33, 77, 76]
-tag_list = [10,33]
+tag_list = [1,10,33]
 
 # IP and port of Tello for commands
 tello_address = ('192.168.10.1', 8889)
@@ -287,6 +287,7 @@ def yawpitchrolldecomposition(rvec):
 
 send('command')
 send('streamon')
+send('battery?')
 # Create and start a listening thread that runs in the background
 # This utilizes our receive function and will continuously monitor for incoming messages
 receiveThread = threading.Thread(target=receive)
@@ -347,17 +348,19 @@ while True:
     ki_yaw = 1.0
     kd_yaw = 0.1
 
-    kp_ud = 50
-    ki_ud = 5
-    kd_ud = 0
+    kp_ud = 80
+    ki_ud = 8
+    kd_ud = 0.5
 
-    kp_lr = 20
-    ki_lr = 2
-    kd_lr = 0
+    kp_lr = 30
+    ki_lr = 5
+    kd_lr = 0.2
 
-    kp_fb = 20
-    ki_fb = 2
-    kd_fb = 0
+    kp_fb = 50
+    ki_fb = 4
+    kd_fb = 1
+
+    killNext = 0
 
     # Control stores
     integratedError_yaw = 0.0
@@ -426,7 +429,7 @@ while True:
 
         #LR control
         #xtargets = [0.3, -0.3, 0.0]
-        xtargets = [-0.3, 0.0]
+        xtargets = [0.45, -0.3, 0.0]
         reference_x = xtargets[target_num_GLOBAL]
         if tvec_x!=0.0:
             #print('LR control active')
@@ -435,10 +438,14 @@ while True:
             errorDerivative_lr = (error_lr - errorStore_lr) / INTERVAL
             errorStore_lr = error_lr
             control_LR = kp_lr*error_lr +  ki_lr*integratedError_lr + kd_lr*errorDerivative_lr
-
+        if killNext!=0:
+            control_LR = 0
+            integratedError_lr = 0
+            killNext = killNext - 1
 
         #FB control
-        reference_z = 0.5
+        ztargets = [0.5, 0.5, 0.25]
+        reference_z = ztargets[target_num_GLOBAL]
         if tvec_z!=0.0:
             #print('FB control active')
             error_fb = -(reference_z - tvec_z)
@@ -447,6 +454,9 @@ while True:
             errorStore_fb = error_fb
             control_FB = kp_fb*error_fb +  ki_fb*integratedError_fb + kd_fb*errorDerivative_fb
 
+        if (target_num_GLOBAL==len(tag_list)-1) and abs(error_lr)<0.1 and abs(error_fb)<0.1:
+            print("Finished course")
+            break
 
         #verify you are within the threshold and that your Tello can see the next tag
         if abs(error_lr)<0.1 and abs(error_fb)<0.1 and target_num_GLOBAL<(len(tag_list)-1) and tvec_z!=0.0:
@@ -456,6 +466,10 @@ while True:
             #tag_list.remove(curr_id)
             #curr_id = tag_list[0]
             target_num_GLOBAL += 1
+            #control_FB = 100
+            control_LR = 0
+            killNext = 15
+
 
 ###################################################################################################
 #################################DON'T TOUCH ANYTHING OUTSIDE THIS#################################
@@ -483,8 +497,14 @@ while True:
 
     # Handle ctrl-c case to quit and close the socket
   except KeyboardInterrupt as e:
-    message='emergency' # try to turn off motors
+    #message='emergency' # try to turn off motors
+    #send(message)
+
+
+    message ='land'
     send(message)
+    print('landing')
+
     stateStop.set()  # set stop variable
     stateThread.join()   # wait for termination of state thread
     writeDataFile(State_data_file_name)
