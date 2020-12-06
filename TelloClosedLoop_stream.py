@@ -33,8 +33,6 @@ stateQ = LifoQueue() # have top element available for reading present state by c
 tvec_GLOBAL = [1.0,1.0,1.0]
 rvec_GLOBAL = [1.0,1.0,1.0]
 target_num_GLOBAL = 0
-#tag_list = [10, 11, 33, 1]
-#tag_list = [35, 34, 33, 77, 76]
 tag_list = [1,10,33]
 
 # IP and port of Tello for commands
@@ -133,6 +131,12 @@ def rcvstate():
         index +=1
     print('finished rcvstate thread')
 
+def recordingSetup(filename, cap):
+    width = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv.CAP_PROP_FPS)
+    fourcc = cv.VideoWriter_fourcc(*'DIVX')
+    return cv.VideoWriter(filename + '.avi',fourcc, fps, (width,height))
 
 def camera():
     global rvec_GLOBAL
@@ -157,21 +161,19 @@ def camera():
     mtx = array(parameters['mtx'])
     dist = array(parameters['dist'])
 
-    # Create absolute path from this module
-    #file_abspath = os.path.join(os.path.dirname(__file__), 'Samples/box.obj')
+    filename = "Outputs/output_vid"
+    print(filename)
+    vidRecorder = recordingSetup(filename, cap)
 
     tvec = [[[0.0, 0.0, 0.0]]]
     rvec = [[[0.0, 0.0, 0.0]]]
 
     aruco_dict = cv.aruco.Dictionary_get(cv.aruco.DICT_4X4_250)
-    #markerLength = 0.25   # Here, our measurement unit is centimetre.
     parameters = cv.aruco.DetectorParameters_create()
     parameters.adaptiveThreshConstant = 10
 
     print('beginning camera thread loop')
-    #scale = 3
     ret = False
-
 
     dist_threshold = 0.4 # if tello is within this distance, we no longer look at the tag
     while(True):
@@ -197,7 +199,6 @@ def camera():
                     text = str([round(i,5) for i in tvec[i][0]])
                     position = tuple(corners[i][0][0])
                     cv.putText(frame, text, position, font, 0.4, (0, 0, 0), 1, cv.LINE_AA)
-
                     #get tvec, rvec of each id
                     #print('ids: ', ids[i])
                     #print('translation: ', tvec[i][0])
@@ -205,19 +206,8 @@ def camera():
                     #print('distance: ', np.linalg.norm(tvec[i][0]))
                 cv.aruco.drawDetectedMarkers(frame, corners)
 
-                #curr_id = tag_list[0]
                 curr_id = tag_list[target_num_GLOBAL]
                 ids_list = np.ndarray.tolist(ids.flatten()) #turn it into a list
-
-                #print('tag list')
-                #print(tag_list) #list [33, 34, 35]
-
-                #print('current id being sought')
-                #print(curr_id) #int 33, the one being looked for
-
-                #print('IDs seen by the Tello')
-                #print(ids) ##ndarray [[35]], the one the Tello sees
-
 
                 try:
                     curr_index = ids_list.index(curr_id)
@@ -226,28 +216,15 @@ def camera():
                     tvec_GLOBAL = tvec[curr_index][0]
                     rvec_GLOBAL = rvec[curr_index][0]
 
-                    #verify you are within the threshold and that your Tello can see the next tag
-                    #if curr_dist < dist_threshold and ids_list[curr_index] == curr_id and (len(tag_list)-1>target_num_GLOBAL):
-                    #    print('Removing tag: '+str(curr_id))
-                    #    #tag_list.remove(curr_id)
-                    #    #curr_id = tag_list[0]
-                    #    target_num_GLOBAL += 1
-
                 except:
                     pass
 
                 if len(tag_list) == 0:
                         break
-
-
             else:
                 pass
 
-            # If we are passing the last tag, we just shut down camera
-            if len(tag_list) == 0:
-                break
-
-
+            vidRecorder.write(frame)
             cv.imshow('frame',frame)
             if cv.waitKey(1) & 0xFF == ord('q'):
                 break
@@ -271,20 +248,6 @@ def receive():
       print("Error receiving: " + str(e))
       break
 
-
-def yawpitchrolldecomposition(rvec):
-    R = cv.Rodrigues(np.float32(rvec))[0]
-
-    sin_x    = math.sqrt(R[2,0] * R[2,0] +  R[2,1] * R[2,1])
-
-    z1    = math.atan2(R[2,0], R[2,1])     # around z1-axis
-    x      = math.atan2(sin_x,  R[2,2])     # around x-axis
-    z2    = math.atan2(R[0,2], -R[1,2])    # around z2-axis
-
-
-    return np.array([[z1], [x], [z2]])
-
-
 send('command')
 send('streamon')
 send('battery?')
@@ -306,12 +269,10 @@ stateThreadStream.daemon = True  # want clean file close
 stateThreadStream.start()
 
 
-
 print('Type in a Tello SDK command and press the enter key. Enter "quit" to exit this program.')
 
 # Loop infinitely waiting for commands or until the user types quit or ctrl-c
 while True:
-
   try:
     # Read keybord input from the user
     if (sys.version_info > (3, 0)):
@@ -330,7 +291,6 @@ while True:
       CmdSock.close()  # sockete for commands
       StateSock.close()  # socket for state
       print("sockets and threads closed")
-
       break
 
     # Send the command to Tello
@@ -339,26 +299,22 @@ while True:
     # height in centimeters
     print('takeoff done')
 
-###################################################################################################
-#################################DON'T TOUCH ANYTHING OUTSIDE THIS#################################
-###################################################################################################
-
     # Controller Variables
     kp_yaw = 2.5
     ki_yaw = 1.0
     kd_yaw = 0.1
 
-    kp_ud = 80
-    ki_ud = 8
-    kd_ud = 0.5
+    kp_ud = 100
+    ki_ud = 20
+    kd_ud = 10
 
-    kp_lr = 30
-    ki_lr = 5
-    kd_lr = 0.2
+    kp_lr = 100
+    ki_lr = 15
+    kd_lr = 50
 
-    kp_fb = 50
-    ki_fb = 4
-    kd_fb = 1
+    kp_fb = 90
+    ki_fb = 15
+    kd_fb = 50
 
     killNext = 0
 
@@ -391,6 +347,8 @@ while True:
         # Get data (read sensors)
         presentState = stateQ.get(block=True, timeout=None)  # block if needed until new state is ready
         ptime = presentState[1]     # present time (don't over write time function)
+        if i==0:
+            print("Start time:" +str(ptime))
         yaw = presentState[9]       # current yaw angle (don't overwrite)
         tvec_x = presentState[23]
         tvec_y = presentState[24]
@@ -402,10 +360,9 @@ while True:
             tvec_y = last_tvec_y
             tvec_z = last_tvec_z
 
-
         #Yaw control
         reference_yaw = 0
-        if i>100:
+        if 1:
             error_yaw = reference_yaw - yaw
             integratedError_yaw = integratedError_yaw + INTERVAL*error_yaw
             errorDerivative_yaw = (error_yaw - errorStore_yaw) / INTERVAL
@@ -416,7 +373,6 @@ while True:
         lastYaw = yaw
 
         #UD control
-
         reference_y = 0.0
         if tvec_y!=0.0:
             #print('UD control active')
@@ -428,8 +384,7 @@ while True:
 
 
         #LR control
-        #xtargets = [0.3, -0.3, 0.0]
-        xtargets = [0.45, -0.3, 0.0]
+        xtargets = [0.5, -0.25, 0.0]
         reference_x = xtargets[target_num_GLOBAL]
         if tvec_x!=0.0:
             #print('LR control active')
@@ -444,7 +399,7 @@ while True:
             killNext = killNext - 1
 
         #FB control
-        ztargets = [0.5, 0.5, 0.25]
+        ztargets = [0.5, 0.45, 0.25]
         reference_z = ztargets[target_num_GLOBAL]
         if tvec_z!=0.0:
             #print('FB control active')
@@ -454,27 +409,18 @@ while True:
             errorStore_fb = error_fb
             control_FB = kp_fb*error_fb +  ki_fb*integratedError_fb + kd_fb*errorDerivative_fb
 
-        if (target_num_GLOBAL==len(tag_list)-1) and abs(error_lr)<0.1 and abs(error_fb)<0.1:
+        if (target_num_GLOBAL==len(tag_list)-1) and abs(error_lr)<0.15 and abs(error_fb)<0.15:
             print("Finished course")
             break
 
-        #verify you are within the threshold and that your Tello can see the next tag
-        if abs(error_lr)<0.1 and abs(error_fb)<0.1 and target_num_GLOBAL<(len(tag_list)-1) and tvec_z!=0.0:
+        #verify you are within the threshold
+        if abs(error_lr)<0.15 and abs(error_fb)<0.15 and target_num_GLOBAL<(len(tag_list)-1) and tvec_z!=0.0:
             print('Removing tag: '+str(target_num_GLOBAL))
             integratedError_fb = 0.0
             integratedError_lr = 0.0
-            #tag_list.remove(curr_id)
-            #curr_id = tag_list[0]
             target_num_GLOBAL += 1
-            #control_FB = 100
             control_LR = 0
-            killNext = 15
-
-
-###################################################################################################
-#################################DON'T TOUCH ANYTHING OUTSIDE THIS#################################
-###################################################################################################
-
+            killNext = 14
 
         # Send Control to quad
         control_LR = int(np.clip(control_LR,-100,100))
@@ -482,6 +428,7 @@ while True:
         control_UD = int(np.clip(control_UD,-100,100))
         control_YA = int(np.clip(control_YA,-100,100))
         message = 'rc '+str(control_LR)+' '+str(control_FB)+' '+str(control_UD)+' '+str(control_YA)
+        print(message)
         send(message)
 
         # Wait so make sample time steady
@@ -497,14 +444,9 @@ while True:
 
     # Handle ctrl-c case to quit and close the socket
   except KeyboardInterrupt as e:
-    #message='emergency' # try to turn off motors
-    #send(message)
-
-
     message ='land'
     send(message)
     print('landing')
-
     stateStop.set()  # set stop variable
     stateThread.join()   # wait for termination of state thread
     writeDataFile(State_data_file_name)
